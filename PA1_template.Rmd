@@ -9,17 +9,102 @@ output:
 ## Loading and preprocessing the data
 
 
+```{r,echo=FALSE,warning=FALSE}
+library(ggplot2)
+setwd("C:/Users/wikpeter/Documents/Coursera - Data Science/repdata-016/RepData_PeerAssessment1")
+
+```
+
+We start off by loading the data set stored in the subfolder data.
+
+```{r load}
+activityData <- read.csv("data/activity.csv")
+rows <- nrow(activityData)
+
+```
+The data has `r rows` rows
+
+Formatting dates from string to POSIX format for later use
+```{r preprocess 1}
+activityData$date <- as.POSIXct(activityData$date, format="%Y-%m-%d")
+
+```
+
+
 
 ## What is mean total number of steps taken per day?
 
+First a histogram of the total amount of steps per day
+
+```{r stephistogram,fig.height=5}
+sumPerDay <- aggregate(activityData$steps,by=list(day=activityData$date), FUN=sum)
+hist(sumPerDay$x, col="red",main="Steps per day",xlab="Steps")
+```
+
+```{r stepmean}
+meanStepsPerDay <- sprintf("%.1f",mean(na.omit(sumPerDay$x)))
+medianStepsPerDay <- median(na.omit(sumPerDay$x))
+sumStepsPerDay <- sprintf("%.1f",sum(na.omit(sumPerDay$x)))
+```
+The mean of the total number of steps taken per day is `r meanStepsPerDay` and the median is `r medianStepsPerDay`.
 
 
 ## What is the average daily activity pattern?
 
+The average number of steps per 5 minutes interval looks like this:
+```{r stepsPerMinute,fig.height=5}
+meanPerMinute <- aggregate(activityData,by=list(Interval=activityData$interval), FUN=mean, na.rm=TRUE)
+plot(meanPerMinute$Interval,meanPerMinute$steps,type="l",ylab="steps(mean)",xlab="5 minute interval",col="red")
+maxMean <- sprintf("%.1f",max(meanPerMinute$steps))
+maxInterval <- meanPerMinute[which.max(meanPerMinute$steps),"interval"]
+```
+
+with the highest number of steps `r maxMean` being taken in the interval `r maxInterval`
+
 
 
 ## Imputing missing values
+```{r missing}
+  missingRows <- sum(!complete.cases(activityData))
+```
+The total number of missing rows are `r missingRows`. These row could be filled in with a value that corresponds to the mean value of the same interval on the other days. We can re-use the meanPerMinute varible from above:
+
+```{r missing2}
+completedData <- merge(activityData, meanPerMinute[,c("steps", "interval")], by="interval")
+completedData$completedSteps <- ifelse(is.na(completedData$steps.x),completedData$steps.y, completedData$steps.x)
+```
+
+
+As seen from the histogram, imputing missing values has no effect on the histogram. This is because the missing values all occured on whole days and the data for those days were now imputed with average data from other days and thus the days became "average days".
+```{r stephistogramMissing,fig.height=5}
+sumPerDay2 <- aggregate(completedData$completedSteps,by=list(day=completedData$date), FUN=sum)
+hist(sumPerDay2$x, col="red",main="Steps per day, imputed data",xlab="Steps")
+meanStepsPerDay2 <- sprintf("%.1f",mean(sumPerDay2$x))
+medianStepsPerDay2 <- sprintf("%.1f",median(sumPerDay2$x))
+sumStepsPerDay2 <- sprintf("%.1f",sum(sumPerDay2$x))
+```
+The mean of the total number of steps taken per day is unaffected: `r meanStepsPerDay2` , but the median is `r medianStepsPerDay2`, which differs a bit from the earlier calculated figure. The total amount of steps is now `r sumStepsPerDay2` as compared to `r sumStepsPerDay` before the imputing.
 
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+As seen from the graphs below, on weekends the steps increase later in the morning and is spread out more evenly during the day. More steps are also beeing recorded later in the evening on weekends.
+
+```{r weekdays,fig.height=7,warning=FALSE}
+Sys.setlocale("LC_TIME", "English")
+
+completedData$dayType[weekdays(completedData$date,abbreviate="TRUE") == "Mon"] <- "WEEKDAY"
+completedData$dayType[weekdays(completedData$date,abbreviate="TRUE") == "Tue"] <- "WEEKDAY"
+completedData$dayType[weekdays(completedData$date,abbreviate="TRUE") == "Wed"] <- "WEEKDAY"
+completedData$dayType[weekdays(completedData$date,abbreviate="TRUE") == "Thu"] <- "WEEKDAY"
+completedData$dayType[weekdays(completedData$date,abbreviate="TRUE") == "Fri"] <- "WEEKDAY"
+completedData$dayType[weekdays(completedData$date,abbreviate="TRUE") == "Sat"] <- "WEEKEND"
+completedData$dayType[weekdays(completedData$date,abbreviate="TRUE") == "Sun"] <- "WEEKEND"
+completedData$dayType = factor(completedData$dayType)
+
+meanPerMinute2 <- aggregate(completedData,by=list(Interval=completedData$interval,DayType = completedData$dayType), FUN=mean)
+
+g <- ggplot(meanPerMinute2, aes(interval,completedSteps ))+geom_line()+facet_grid(DayType ~ .) + labs(y="Steps per 5 minute interval on weekdays vs weekends")
+print(g)
+```
