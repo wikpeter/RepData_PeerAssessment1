@@ -75,7 +75,7 @@ completedData$completedSteps <- ifelse(is.na(completedData$steps.x),completedDat
 ```
 
 
-As seen from the histogram, imputing missing values has no effect on the histogram. This is because the missing values all occured on whole days and the data for those days were now imputed with average data from other days and thus the days became "average days".
+As seen from the histogram, imputing missing values has no big effect on the histogram. This is because the missing values all occured on whole days. The data for those days were now imputed with average data from other days and thus the days became "average days". This shows as an increase in the 10 000 - 15 000 steps category.
 ```{r stephistogramMissing,fig.height=5}
 sumPerDay2 <- aggregate(completedData$completedSteps,by=list(day=completedData$date), FUN=sum)
 hist(sumPerDay2$x, col="red",main="Steps per day, imputed data",xlab="Steps")
@@ -89,7 +89,7 @@ The mean of the total number of steps taken per day is unaffected: `r meanStepsP
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
-As seen from the graphs below, on weekends the steps increase later in the morning and is spread out more evenly during the day. More steps are also beeing recorded later in the evening on weekends.
+
 
 ```{r weekdays,fig.height=7,warning=FALSE}
 Sys.setlocale("LC_TIME", "English")
@@ -108,3 +108,4 @@ meanPerMinute2 <- aggregate(completedData,by=list(Interval=completedData$interva
 g <- ggplot(meanPerMinute2, aes(interval,completedSteps ))+geom_line()+facet_grid(DayType ~ .) + labs(y="Steps per 5 minute interval on weekdays vs weekends")
 print(g)
 ```
+As seen from the graphs above, on weekends the steps increase later in the morning and is spread out more evenly during the day. More steps are also beeing recorded later in the evening on weekends.
